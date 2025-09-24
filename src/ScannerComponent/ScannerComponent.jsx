@@ -1,29 +1,37 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useSymbologyScanner } from "@use-symbology-scanner/react";
 import { send_pn_api } from "../api/send_pn_api";
-import { Button, Input, InputNumber, List } from "antd";
-import { useReactToPrint } from "react-to-print";
-import "./scanner.css";
+import { Button, Form, Input, InputNumber, List } from "antd";
 import Barcode from "react-barcode";
+import { AiFillPrinter } from "react-icons/ai";
+
 export default function ScannerInput() {
   const [code, setCode] = useState("");
   const [qte, setQte] = useState(0);
   const [data, setData] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const printRef = useRef(null);
   const targetRef = useRef(null);
+  const serverHostname = window.location.hostname;
 
   const send_pn = async (pn) => {
-    const res = await send_pn_api(pn, qte);
-    console.log("API response:", res);
-    setData(res?.resData?.data || []);
+    setIsLoading(true);
+    try {
+      console.log(pn);
+      const res = await send_pn_api(pn, qte);
+      console.log("API response:", res);
+      setData(res?.resData?.data || []);
+    } catch (error) {
+      console.log(error);
+    }
+    setIsLoading(false);
   };
 
   const handleScan = (scannedCode) => {
     console.log("Scanned:", scannedCode);
-    setCode(scannedCode);
-    if (scannedCode.length > 14 && qte > 0) {
-      send_pn(scannedCode);
+    if (scannedCode.length > 14) {
+      setCode(scannedCode);
     } else {
       setCode("");
     }
@@ -35,90 +43,98 @@ export default function ScannerInput() {
     avgTimeByChar: 30,
   });
 
-  const handlePrint = useReactToPrint({
-    contentRef: printRef,
-    pageStyle: `
-    @media print {
-      @page {
-        size: 60mm 20mm; 
-        margin: 0;
-      }
-      body {
-        margin: 0;
-      }
-      .barcode-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        height: 100%;
-        padding: 1mm;
-        box-sizing: border-box;
-      }
-      .barcode {
-        transform: scale(0.8); /* Adjust the scale factor to fit the barcode within the ticket */
-      }
-      .text {
-        font-size: 8px; /* Adjust the font size to fit the text within the ticket */
-      }
-    }
-  `,
-  });
+  const handlePrint = () => {
+    console.log(code);
+    console.log("-----------------serverHostname----------------");
+    console.log(serverHostname);
 
-  const onPrintButtonClick = () => {
-    if (printRef.current && data.length > 0) {
-      handlePrint();
-    } else {
-      alert("There is nothing to print");
-    }
+    send_pn(code);
   };
 
   return (
-    <div ref={targetRef} tabIndex={0}>
-      <div>
-        QTE:
-        <InputNumber
-          onChange={(value) => setQte(Number(value))}
-          style={{ height: "38px", fontSize: "16px", width: "250px" }}
-        />
-      </div>
+    <div style={{ padding: "20px", paddingTop: "80px" }}>
+      <Form onFinish={handlePrint}>
+        <div style={{ width: "340px" }}>
+          <Form.Item name="pn" required={false}>
+            <p>Leather PN:</p>
 
-      <div>
-        PN:
-        <Input
-          type="text"
-          value={code}
-          style={{ height: "38px", fontSize: "16px", width: "250px" }}
-          readOnly
-        />
-      </div>
-      <h3>List</h3>
-
-      <div
-        ref={printRef}
-        style={{
-          margin: "10px",
-          padding: "10px",
-        }}
-      >
-        {data.length > 0 ? (
-          data.map((item, index) => (
-            <div key={index} className="page-break no-break">
-              <Barcode value={[item]} />
+            <Input
+              ref={targetRef}
+              tabIndex={0}
+              placeholder="Scan Leather Part number"
+              type="text"
+              value={code}
+              style={{
+                height: "34px",
+                fontSize: "14px",
+                width: "250px",
+              }}
+              readOnly
+            />
+          </Form.Item>
+          <Form.Item
+            required={false}
+            name="qte"
+            // rules={[{ required: true, message: "Qte vide!" }]}
+          >
+            <p>Qte:</p>
+            <InputNumber
+              placeholder="Saisie Quantité"
+              min={1}
+              onChange={(value) => setQte(Number(value))}
+              style={{
+                height: "34px",
+                fontSize: "14px",
+                width: "250px",
+              }}
+            />
+          </Form.Item>
+          <Form.Item>
+            <Button
+              loading={isLoading}
+              style={{
+                height: "34px",
+                fontSize: "14px",
+              }}
+              htmlType="submit"
+              icon={<AiFillPrinter />}
+              type="primary"
+            >
+              Imprimer
+            </Button>
+          </Form.Item>
+        </div>
+        <Form.Item>
+          <div>
+            <div ref={printRef}>
+              {/* {data.map((item, index) => (
+            <div className="barcode-ticket" key={index}> */}
+              <List
+                style={{
+                  borderRadius: "4px",
+                }}
+                size="small"
+                header={<h3 style={{ margin: "0" }}>Serial Numbers</h3>}
+                bordered
+                dataSource={data}
+                renderItem={(item) => (
+                  <List.Item style={{ textAlign: "center" }}>
+                    {" "}
+                    <Barcode
+                      value={item}
+                      displayValue={false}
+                      height={40}
+                      width={2}
+                      margin={0}
+                    />
+                    <div>{item.split(" ")[0]}</div>
+                  </List.Item>
+                )}
+              />
             </div>
-          ))
-        ) : (
-          <div>No data loaded</div>
-        )}
-      </div>
-
-      <Button
-        onClick={onPrintButtonClick}
-        style={{ float: "right", marginTop: "10px" }}
-        type="primary"
-      >
-        Impression
-      </Button>
+          </div>
+        </Form.Item>
+      </Form>
     </div>
   );
 }
