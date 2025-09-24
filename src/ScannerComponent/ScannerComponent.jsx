@@ -57,20 +57,19 @@ export default function ScannerInput() {
         <div style={{ width: "340px" }}>
           <Form.Item name="pn" required={false}>
             <p>Leather PN:</p>
-
-            <Input
-              ref={targetRef}
-              tabIndex={0}
-              placeholder="Scan Leather Part number"
-              type="text"
-              value={code}
-              style={{
-                height: "34px",
-                fontSize: "14px",
-                width: "250px",
-              }}
-              readOnly
-            />
+            <div ref={targetRef} tabIndex={0}>
+              <Input
+                placeholder="Scan Leather Part number"
+                type="text"
+                value={code}
+                readOnly
+                style={{
+                  height: "34px",
+                  fontSize: "14px",
+                  width: "250px",
+                }}
+              />
+            </div>
           </Form.Item>
           <Form.Item
             required={false}
